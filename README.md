@@ -10,21 +10,9 @@ Hopefully, it will be useful for someone once main functional is ready.
 
 Please join this [quick survey](https://forms.gle/eB3sN5Mw76WMpT6w5).
 
-## Releases
+## Changelog
 
-- [Assistant.Net.Diagnostics Release 0.0.11](https://github.com/iotbusters/assistant.net.dynamics/releases/tag/0.0.11)
-  - bug fixes in generated proxy
-  - disabled CS1591 warnings in generated proxy
-
-- [Assistant.Net.Diagnostics Release 0.0.9](https://github.com/iotbusters/assistant.net.dynamics/releases/tag/0.0.9)
-  - added code docs to package
-
-- [Assistant.Net.Diagnostics Release 0.0.5](https://github.com/iotbusters/assistant.net.dynamics/releases/tag/0.0.5)
-  - updated dependencies
-  - upgraded target framework of `proxy.runtime` package to 5.0
-
-- [Assistant.Net.Diagnostics Release 0.0.4](https://github.com/iotbusters/assistant.net.dynamics/releases/tag/0.0.4)
-  - Initial version
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## Packages
 
@@ -58,3 +46,15 @@ var result = proxy.Method(); // "result"
 #### assistant.net.dynamics.proxy.analyzer
 
 Analysis based proxy generation tool that supports compile-forward proxy generation according to the usage `factory.Create<Interface>()`.
+
+\*.csproj file
+
+```xml
+  <ItemGroup>
+    <PackageReference Include="assistant.net.dynamics.proxy.analyzer" Version="0.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="assistant.net.dynamics.proxy.runtime" Version="0.0.11" />
+  </ItemGroup>
+```
