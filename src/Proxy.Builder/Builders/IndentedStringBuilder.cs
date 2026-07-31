@@ -11,7 +11,7 @@ namespace Assistant.Net.Dynamics.Builders
     public class IndentedStringBuilder
     {
         private const int IndentSize = 4;
-        
+
         private readonly SourceBuilder sourceBuilder;
         private readonly int indent;
 

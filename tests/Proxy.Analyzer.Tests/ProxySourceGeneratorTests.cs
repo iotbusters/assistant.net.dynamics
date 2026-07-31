@@ -23,7 +23,7 @@ namespace Assistant.Net.Dynamics.Proxy.Analyzer.Tests
 
             return CSharpCompilation.Create(
                 "test-assembly",
-                new[] {CSharpSyntaxTree.ParseText(source)},
+                new[] { CSharpSyntaxTree.ParseText(source) },
                 references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         }

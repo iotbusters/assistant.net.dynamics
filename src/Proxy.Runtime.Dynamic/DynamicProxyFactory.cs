@@ -52,7 +52,7 @@ namespace Assistant.Net.Dynamics.Internal
             if (factory is null)
                 throw new InvalidOperationException($"Proxy for '{type.FullName}' wasn't registered.");
 
-            return (Proxy<T>) factory(instance);
+            return (Proxy<T>)factory(instance);
         }
 
         private static void GenerateProxies(params Type[] proxyTypes)

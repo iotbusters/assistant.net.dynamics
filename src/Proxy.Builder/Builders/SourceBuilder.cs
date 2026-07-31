@@ -29,7 +29,7 @@ namespace Assistant.Net.Dynamics.Builders
         /// <summary>
         ///     All used namespaces in source builder.
         /// </summary>
-        internal HashSet<string> Imports { get; } = new() {"System", "System.Linq"};
+        internal HashSet<string> Imports { get; } = new() { "System", "System.Linq" };
 
         /// <summary>
         ///     Adds a namespace.

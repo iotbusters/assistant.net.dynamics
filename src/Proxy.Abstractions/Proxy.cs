@@ -41,7 +41,7 @@ namespace Assistant.Net.Dynamics.Abstractions
         /// <summary>
         ///     Proxy object.
         /// </summary>
-        public T Object => (T) (object) this;
+        public T Object => (T)(object)this;
 
         private static Func<Func<object?[], object?>, object?[], object?>[] Prepend(
             Func<Func<object?[], object?>, object?[], object?> interceptor,
