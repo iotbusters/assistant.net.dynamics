@@ -18,20 +18,20 @@ jobs:
     steps:
       - run: echo ${{ github.event.action }}
 
-      - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '9.0' }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "9.0" }
 
       # todo: uncomment once actions/download-artifact supports cross workflow artifacts
       # https://github.com/actions/toolkit/pull/517
       # - name: create package (prepare binaries)
-      #   uses: actions/download-artifact@v2.0.9
+      #   uses: actions/download-artifact@v4
       #   with:
-      #     name: release-binaries
+      #     name: ci-cd-release-binaries
       # it duplicates actions/upload-artifact
       # todo: remove once actions/download-artifact supports cross workflow artifacts.
       # https://github.com/actions/toolkit/pull/517
       - name: create package (prepare binaries workaround)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: release-binaries
           key: ${{ runner.os }}-release-binaries-${{ env.VERSION }}
@@ -40,7 +40,7 @@ jobs:
           VERSION: ${{ github.event.release.tag_name }}
 
       - name: create package (prepare dependencies)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
@@ -58,9 +58,9 @@ jobs:
           VERSION: ${{ github.event.release.tag_name }}
 
       - name: upload package
-        uses: actions/upload-artifact@v2.2.3
+        uses: actions/upload-artifact@v4
         with:
-          name: release-packages
+          name: cd-release-packages
           path: |
             packages/*.nupkg
             packages/*.snupkg
@@ -70,7 +70,7 @@ jobs:
       # todo: remove once actions/download-artifact supports cross workflow artifacts.
       # https://github.com/actions/toolkit/pull/517
       - name: upload package (released workaround)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: packages
           key: ${{ runner.os }}-released-packages-${{ env.VERSION }}
@@ -78,7 +78,7 @@ jobs:
           VERSION: ${{ github.event.release.tag_name }}
         if: github.event.release.prerelease != true
       - name: upload package (prereleased workaround)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: packages
           key: ${{ runner.os }}-prereleased-packages-${{ env.VERSION }}
@@ -90,13 +90,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: pack-packages
     steps:
-      - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '9.0' }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "9.0" }
 
       - name: publish package (prepare)
-        uses: actions/download-artifact@v2.0.9
+        uses: actions/download-artifact@v4
         with:
-          name: release-packages
+          name: cd-release-packages
 
       - name: publish package
         run: |
@@ -109,14 +109,14 @@ jobs:
     steps:
       - run: echo ${{ github.event.action }}
 
-      - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '9.0' }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "9.0" }
 
       # it duplicates actions/upload-artifact
       # todo: remove once actions/download-artifact supports cross workflow artifacts.
       # https://github.com/actions/toolkit/pull/517
       - name: delete packages (prepare released workaround)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: packages
           key: ${{ env.KEY }}
@@ -127,7 +127,7 @@ jobs:
       # todo: remove once actions/download-artifact supports cross workflow artifacts.
       # https://github.com/actions/toolkit/pull/517
       - name: delete packages (prepare prereleased workaround)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: packages
           key: ${{ env.KEY }}
@@ -153,6 +153,6 @@ jobs:
           done
 
       - name: delete tag (prepare)
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v4
       - name: delete tag
         run: git push origin -d ${{ github.event.release.tag_name }}

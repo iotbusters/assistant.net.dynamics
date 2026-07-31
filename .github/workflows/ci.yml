@@ -13,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.commits[0].id != '' # to avoid failures if no commit push (e.g. rebasing).
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
         with: { fetch-depth: 100 }
 
       - name: change-detected
         id: change-detected
         run: |
           CHANGES=$(git diff --name-only ${{ github.event.commits[0].id }}~1..${{ github.event.after }})
-          echo ::set-output name=ci-changes::$(echo "$CHANGES" | grep -c -E '\.(cs|csproj|json)$')
+          echo "ci-changes=$(echo "$CHANGES" | grep -c -E '\.(cs|csproj|json)$')" >> $GITHUB_OUTPUT
     outputs:
       ci-changes: ${{ steps.change-detected.outputs.ci-changes }}
 
@@ -28,12 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: change-detect
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
         with: { fetch-depth: 100 }
-      - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '9.0' }
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "9.0" }
 
-      - uses: actions/cache@v2.1.5
+      - uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
@@ -48,9 +48,9 @@ jobs:
           files: |
             **/TestResults.xml
         if: always()
-      - uses: actions/upload-artifact@v2.2.3
+      - uses: actions/upload-artifact@v4
         with:
-          name: ci-analyzers-results
+          name: ci-results
           path: |
             **/TestResults.xml
           retention-days: 60

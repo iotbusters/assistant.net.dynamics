@@ -9,25 +9,25 @@ on:
       - assistant.net.sln
       - LICENSE
 env:
-  VERSION: '${{ secrets.MAJOR_MINOR_VERSION }}.${{ github.run_number }}'
+  VERSION: "${{ secrets.MAJOR_MINOR_VERSION }}.${{ github.run_number }}"
 
 jobs:
   change-detect:
     runs-on: ubuntu-latest
     if: github.event.commits[0].id != '' # to avoid failures if no commit push (e.g. rebasing).
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v4
         with: { fetch-depth: 100 }
 
       - name: detect code changes
         id: change-detected
         run: |
           CHANGES=$(git diff --name-only ${{ github.event.commits[0].id }}~1..${{ github.event.after }})
-          echo ::set-output name=ci-changes::echo ::set-output name=ci-changes::$(echo "$CHANGES" | grep -c -E '\.(cs|csproj|json)$')
-          echo ::set-output name=builder::$(echo "$CHANGES" | grep -c src/Proxy.Builder/)
-          echo ::set-output name=analyzer::$(echo "$CHANGES" | grep -c src/Proxy.Analyzer/)
-          echo ::set-output name=runtime::$(echo "$CHANGES" | grep -c src/Proxy.Runtime/)
-          echo ::set-output name=total::$(echo "$CHANGES" | wc -l)
+          echo "ci-changes=$(echo "$CHANGES" | grep -c -E '\.(cs|csproj|json)$')" >> $GITHUB_OUTPUT
+          echo "builder=$(echo "$CHANGES" | grep -c src/Proxy.Builder/)" >> $GITHUB_OUTPUT
+          echo "analyzer=$(echo "$CHANGES" | grep -c src/Proxy.Analyzer/)" >> $GITHUB_OUTPUT
+          echo "runtime=$(echo "$CHANGES" | grep -c src/Proxy.Runtime/)" >> $GITHUB_OUTPUT
+          echo "total=$(echo "$CHANGES" | wc -l)" >> $GITHUB_OUTPUT
     outputs:
       ci-changes: ${{ steps.change-detected.outputs.ci-changes }}
       builder: ${{ steps.change-detected.outputs.builder }}
@@ -40,12 +40,12 @@ jobs:
     needs: change-detect
     if: needs.change-detect.outputs.ci-changes != '0'
     steps:
-      - uses: actions/checkout@v2.3.4
-      - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '9.0' }
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: "9.0" }
 
       - name: restore (prepare)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
@@ -70,9 +70,9 @@ jobs:
             **/coverage.opencover.xml
         if: always()
       - name: upload result
-        uses: actions/upload-artifact@v2.2.3
+        uses: actions/upload-artifact@v4
         with:
-          name: ci-results
+          name: ci-cd-results
           path: |
             **/TestResults.xml
             **/coverage.opencover.xml
@@ -89,11 +89,11 @@ jobs:
         if: needs.change-detect.outputs.ci-changes != '0'
       - name: upload binaries (prepare package counter)
         id: count-changes
-        run: echo ::set-output name=total-package-prepared-count::$(ls release-binaries/src | wc -l)
+        run: echo "total-package-prepared-count=$(ls release-binaries/src | wc -l)" >> $GITHUB_OUTPUT
       - name: upload binaries
-        uses: actions/upload-artifact@v2.2.3
+        uses: actions/upload-artifact@v4
         with:
-          name: release-binaries
+          name: ci-cd-release-binaries
           path: |
             release-binaries/**/*.csproj
             release-binaries/**/*.dll
@@ -108,7 +108,7 @@ jobs:
       # todo: remove once actions/download-artifact supports cross workflow artifacts.
       # https://github.com/actions/toolkit/pull/517
       - name: upload binaries (workaround)
-        uses: actions/cache@v2.1.5
+        uses: actions/cache@v4
         with:
           path: release-binaries
           key: ${{ runner.os }}-release-binaries-${{ env.VERSION }}
@@ -123,15 +123,15 @@ jobs:
     if: needs.build.outputs.total-package-prepared-count != '0'
     steps:
       - name: create release (ensure binaries)
-        uses: actions/download-artifact@v2.0.9
+        uses: actions/download-artifact@v4
         with:
-          name: release-binaries
+          name: ci-cd-release-binaries
 
       - name: create release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          release_name: Assistant.Net.Dynamics Release ${{ env.VERSION }}
+          name: Assistant.Net.Dynamics Release ${{ env.VERSION }}
           prerelease: true
           draft: true # published event isn't triggered automatically, so release is created as draft to publish manually.
           body: |
@@ -151,5 +151,4 @@ jobs:
                 <li>${{ join(github.event.commits.*.message, '</li><li>') }}</li>
               </ul>
             </details>
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
