@@ -25,14 +25,20 @@ namespace Assistant.Net.Dynamics
         /// </summary>
         public static Compilation AddProxy(this Compilation compilation, Type proxyType, string? @namespace = null)
         {
-            var assemblyPath = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+            var objectAssemblyLocation = typeof(object).Assembly.Location;
+            if (string.IsNullOrEmpty(objectAssemblyLocation))
+                throw new PlatformNotSupportedException(
+                    "Runtime proxy generation requires on-disk framework assemblies and isn't supported "
+                    + "under single-file publish or Native AOT.");
+
+            var assemblyPath = Path.GetDirectoryName(objectAssemblyLocation)!;
             var systemAssemblies = new[]
             {
                 Path.Combine(assemblyPath, "System.Runtime.dll"),
                 Path.Combine(assemblyPath, "netstandard.dll"),
                 proxyType.Assembly.Location
             }.Distinct().Select(x => MetadataReference.CreateFromFile(x));
-            compilation = compilation.AddReferences(systemAssemblies); 
+            compilation = compilation.AddReferences(systemAssemblies);
 
             var proxyTypeSymbol = compilation.GetTypeSymbol(proxyType);
             return compilation.AddProxy(proxyTypeSymbol, @namespace);
@@ -153,8 +159,14 @@ namespace Assistant.Net.Dynamics
                                     .Append(method.Name).Append("\", new Type[] {")
                                     .AppendJoin(
                                         ", ",
-                                        parameterTypes,
-                                        (b, type) => b.Append("typeof(").Type(type).Append(")"))
+                                        method.Parameters.ToArray(),
+                                        (b, parameter) =>
+                                        {
+                                            if (parameter.RefKind == RefKind.None)
+                                                b.Append("typeof(").Type(parameter.Type).Append(")");
+                                            else
+                                                b.Append("typeof(").Type(parameter.Type).Append(").MakeByRefType()");
+                                        })
                                     .AppendLine("});");
                         }
 
@@ -173,59 +185,134 @@ namespace Assistant.Net.Dynamics
                         cb.AddProperty(
                             property,
                             getter: b => b
-                                .Append("var interceptor = GetImplementation(")
-                                .Append("this.get", property.Name, ", x =>")
+                                .Append("if (!IsIntercepted(this.get", property.Name, "))")
                                 .AddBlock(ib => ib
                                     .Append("if (this.", instanceFieldName, " == null) ")
                                     .AppendLine("throw this.", errorFieldName, ";")
                                     .AppendLine("return this.", instanceFieldName, ".", property.Name, ";"))
-                                .AppendLine(");")
-                                .Append("return (").Type(property.Type).AppendLine(") interceptor(new object[0]);"),
+                                .Append("return (").Type(property.Type).Append(") Invoke(this.get", property.Name, ", new object[0], x =>")
+                                .AddBlock(ib => ib
+                                    .Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";")
+                                    .AppendLine("return this.", instanceFieldName, ".", property.Name, ";"))
+                                .AppendLine(");"),
                             setter: b => b
-                                .Append("var interceptor = GetImplementation(")
-                                .Append("this.set", property.Name, ", x =>")
+                                .Append("if (!IsIntercepted(this.set", property.Name, "))")
                                 .AddBlock(ib => ib
                                     .Append("if (this.", instanceFieldName, " == null) ")
                                     .AppendLine("throw this.", errorFieldName, ";")
                                     .AppendLine("this.", instanceFieldName, ".", property.Name, " = value;")
+                                    .AppendLine("return;"))
+                                .Append("Invoke(this.set", property.Name, ", new object[] {value}, x =>")
+                                .AddBlock(ib => ib
+                                    .Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";")
+                                    .Append("this.", instanceFieldName, ".", property.Name, " = (").Type(property.Type).AppendLine(") x[0];")
                                     .AppendLine("return null;"))
                                 .AppendLine(");")
-                                .AppendLine("interceptor(new object[0]);")
                             );
 
                     foreach (var method in proxyTypeMethods)
                     {
-                        var argumentNames = method.Parameters.Select(x => x.Name!).ToArray();
+                        var parameters = method.Parameters.ToArray();
+                        var argumentNames = parameters.Select(x => x.Name!).ToArray();
+                        var hasByRefParameters = parameters.Any(x => x.RefKind != RefKind.None);
+
                         cb.AddMethod(method, b =>
                         {
-                            b.Append("var interceptor = GetImplementation(");
+                            b.Append("var key = this.").MethodName(method);
                             if (method.IsGenericMethod)
-                                b.Append("this.").MethodName(method)
-                                    .Append(".MakeGenericMethod(")
+                                b.Append(".MakeGenericMethod(")
                                     .AppendJoin(", ", method.TypeArguments.ToArray(), (bt, type) => bt.Append("typeof(").Type(type).Append(")"))
                                     .Append(")");
-                            else
-                                b.Append("this.").MethodName(method);
-                            b.Append(", x =>");
+                            b.AppendLine(";");
 
+                            b.Append("if (!IsIntercepted(key))");
                             if (method.ReturnsVoid)
                                 b.AddBlock(ib => ib
-                                        .AppendLine("if (this.", instanceFieldName, " == null)")
-                                        .AppendLine("throw this.", errorFieldName, ";")
-                                        .Append("this.", instanceFieldName, ".", method.Name, "(")
-                                        .AppendJoin(", ", argumentNames).AppendLine(");"))
-                                    .AppendLine(");")
-                                    .Append("interceptor(new object[] {")
-                                    .AppendJoin(", ", argumentNames).AppendLine("});");
+                                    .Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";")
+                                    .Append("this.", instanceFieldName, ".", method.Name, "(")
+                                    .AppendJoin(", ", parameters, (pb, p) => pb.Append(p.RefKind.ToPrefix(), p.Name!)).AppendLine(");")
+                                    .AppendLine("return;"));
                             else
                                 b.AddBlock(ib => ib
-                                        .Append("if (this.", instanceFieldName, " == null) ")
-                                        .AppendLine("throw this.", errorFieldName, ";")
-                                        .Append("return this.", instanceFieldName, ".", method.Name, "(")
-                                        .AppendJoin(", ", argumentNames).AppendLine(");"))
-                                    .AppendLine(");")
-                                    .Append("return (").Type(method.ReturnType).Append(") interceptor((new object[] {")
-                                    .AppendJoin(", ", argumentNames).AppendLine("}));");
+                                    .Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";")
+                                    .Append("return this.", instanceFieldName, ".", method.Name, "(")
+                                    .AppendJoin(", ", parameters, (pb, p) => pb.Append(p.RefKind.ToPrefix(), p.Name!)).AppendLine(");"));
+
+                            if (!hasByRefParameters)
+                            {
+                                if (method.ReturnsVoid)
+                                    b.Append("Invoke(key, new object[] {")
+                                        .AppendJoin(", ", argumentNames).Append("}, x =>")
+                                        .AddBlock(ib => ib
+                                            .Append("if (this.", instanceFieldName, " == null) ")
+                                            .AppendLine("throw this.", errorFieldName, ";")
+                                            .Append("this.", instanceFieldName, ".", method.Name, "(")
+                                            .AppendJoin(", ", argumentNames).AppendLine(");")
+                                            .AppendLine("return null;"))
+                                        .AppendLine(");");
+                                else
+                                    b.Append("return (").Type(method.ReturnType).Append(") Invoke(key, new object[] {")
+                                        .AppendJoin(", ", argumentNames).Append("}, x =>")
+                                        .AddBlock(ib => ib
+                                            .Append("if (this.", instanceFieldName, " == null) ")
+                                            .AppendLine("throw this.", errorFieldName, ";")
+                                            .Append("return this.", instanceFieldName, ".", method.Name, "(")
+                                            .AppendJoin(", ", argumentNames).AppendLine(");"))
+                                        .AppendLine(");");
+                                return;
+                            }
+
+                            // ref/out parameters: materialize args into a local so mutations can be written back after Invoke.
+                            b.Append("var args = new object[] {")
+                                .AppendJoin(", ", parameters, (pb, p) =>
+                                {
+                                    if (p.RefKind == RefKind.Out)
+                                        pb.Append("default(").Type(p.Type).Append(")");
+                                    else
+                                        pb.Append(p.Name!);
+                                })
+                                .AppendLine("};");
+
+                            void Tail(IndentedStringBuilder ib)
+                            {
+                                ib.Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";");
+                                for (var i = 0; i < parameters.Length; i++)
+                                    if (parameters[i].RefKind != RefKind.None)
+                                        ib.Append("var local", i.ToString(), " = (").Type(parameters[i].Type).Append(") x[", i.ToString(), "];").AppendLine();
+
+                                ib.Append(method.ReturnsVoid ? string.Empty : "var result = ", "this.", instanceFieldName, ".", method.Name, "(")
+                                    .AppendJoin(", ", Enumerable.Range(0, parameters.Length).ToArray(), (pb, i) =>
+                                    {
+                                        if (parameters[i].RefKind == RefKind.None)
+                                            pb.Append(parameters[i].Name!);
+                                        else
+                                            pb.Append(parameters[i].RefKind.ToPrefix(), "local", i.ToString());
+                                    })
+                                    .AppendLine(");");
+
+                                for (var i = 0; i < parameters.Length; i++)
+                                    if (parameters[i].RefKind is RefKind.Ref or RefKind.Out)
+                                        ib.AppendLine("x[", i.ToString(), "] = local", i.ToString(), ";");
+
+                                ib.AppendLine(method.ReturnsVoid ? "return null;" : "return result;");
+                            }
+
+                            if (method.ReturnsVoid)
+                                b.Append("Invoke(key, args, x =>").AddBlock(Tail).AppendLine(");");
+                            else
+                                b.Append("var invokeResult = Invoke(key, args, x =>").AddBlock(Tail).AppendLine(");");
+
+                            for (var i = 0; i < parameters.Length; i++)
+                                if (parameters[i].RefKind is RefKind.Ref or RefKind.Out)
+                                    b.Append(parameters[i].Name!, " = (").Type(parameters[i].Type).Append(") args[", i.ToString(), "];").AppendLine();
+
+                            if (!method.ReturnsVoid)
+                                b.Append("return (").Type(method.ReturnType).Append(") invokeResult;").AppendLine();
                         });
                     }
 
@@ -234,26 +321,39 @@ namespace Assistant.Net.Dynamics
                         cb.AddEvent(
                             @event,
                             addBody: b => b
-                                .AppendLine("var interceptor = GetImplementation(this.add", @event.Name, ", x =>")
+                                .Append("if (!IsIntercepted(this.add", @event.Name, "))")
+                                .AddBlock(ib => ib
+                                    .Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";")
+                                    .AppendLine("this.", instanceFieldName, ".", @event.Name, " += value;")
+                                    .AppendLine("return;"))
+                                .Append("Invoke(this.add", @event.Name, ", new object[] {value}, x =>")
                                 .AddBlock(ib => ib
                                     .Append("if (this.", instanceFieldName, " == null) ")
                                     .AppendLine("throw this.", errorFieldName, ";")
                                     .AppendLine("this.", instanceFieldName, ".", @event.Name, " += value;")
                                     .AppendLine("return null;"))
-                                .AppendLine(");")
-                                .AppendLine("interceptor(new object[] {value});"),
+                                .AppendLine(");"),
                             removeBody: b => b
-                                .AppendLine("var interceptor = GetImplementation(this.remove", @event.Name, ", x =>")
+                                .Append("if (!IsIntercepted(this.remove", @event.Name, "))")
+                                .AddBlock(ib => ib
+                                    .Append("if (this.", instanceFieldName, " == null) ")
+                                    .AppendLine("throw this.", errorFieldName, ";")
+                                    .AppendLine("this.", instanceFieldName, ".", @event.Name, " -= value;")
+                                    .AppendLine("return;"))
+                                .Append("Invoke(this.remove", @event.Name, ", new object[] {value}, x =>")
                                 .AddBlock(ib => ib
                                     .Append("if (this.", instanceFieldName, " == null) ")
                                     .AppendLine("throw this.", errorFieldName, ";")
                                     .AppendLine("this.", instanceFieldName, ".", @event.Name, " -= value;")
                                     .AppendLine("return null;"))
-                                .AppendLine(");")
-                                .AppendLine("interceptor(new object[] {value});"));
+                                .AppendLine(");"));
                     }
                 });
             });
+
+            if (compilation.GetTypeByMetadataName("Assistant.Net.Dynamics.KnownProxy") != null)
+                builder.AddProxyRegistration(@namespace ?? defaultNamespace, proxyType, proxyTypeName);
 
             return compilation;
         }

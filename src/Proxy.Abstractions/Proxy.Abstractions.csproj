@@ -1,37 +1,31 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net9.0</TargetFrameworks>
     <RootNamespace>Assistant.Net.Dynamics</RootNamespace>
-    <AssemblyName>assistant.net.dynamics.proxy.builder</AssemblyName>
+    <AssemblyName>assistant.net.dynamics.proxy.abstractions</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.SourceLink.GitHub">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Proxy.Abstractions\Proxy.Abstractions.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <Product>Assistant.NET</Product>
     <RepositoryType>github</RepositoryType>
-    <PackageTags>dynamic proxy generator</PackageTags>
-    <Description>Runtime proxy generation tool.</Description>
+    <PackageTags>dynamic proxy abstractions</PackageTags>
+    <Description>Dynamic proxy runtime abstractions.</Description>
     <RepositoryUrl>https://github.com/iotbusters/assistant.net.dynamics</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/iotbusters/assistant.net.dynamics/blob/master/README.md#assistantnetdynamicsproxybuilder</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/iotbusters/assistant.net.dynamics/blob/master/README.md#assistantnetdynamicsproxyabstractions</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\LICENSE" Link="LICENSE" Pack="true" PackagePath="" />
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 
 </Project>

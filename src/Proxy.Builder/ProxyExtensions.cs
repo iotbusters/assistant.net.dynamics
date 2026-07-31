@@ -5,6 +5,9 @@ using Assistant.Net.Dynamics.Abstractions;
 
 namespace Assistant.Net.Dynamics
 {
+    /// <summary>
+    ///     Fluent interception extensions for <see cref="Proxy{T}"/>.
+    /// </summary>
     public static class ProxyExtensions
     {
         /// <summary>
@@ -111,19 +114,40 @@ namespace Assistant.Net.Dynamics
             }
         }
 
+        /// <summary>
+        ///     Intercepts the setter of the property defined in <paramref name="selector"/> to override the assigned value.
+        ///     Note: only properties with a getter can be targeted, since C# expression trees cannot reference set-only members.
+        /// </summary>
+        public static Proxy<T> InterceptSet<T, TValue>(
+            this Proxy<T> proxy,
+            Expression<Func<T, TValue>> selector,
+            Action<TValue> interceptor) =>
+            proxy.InterceptSet(selector, (_, args) => interceptor((TValue) args[0]!));
+
+        /// <summary>
+        ///     Intercepts the setter of the property defined in <paramref name="selector"/> in pipeline manner.
+        /// </summary>
+        public static Proxy<T> InterceptSet<T, TValue>(
+            this Proxy<T> proxy,
+            Expression<Func<T, TValue>> selector,
+            Action<Action<object?[]>, object?[]> interceptor)
+        {
+            if (selector.Body is not MemberExpression { Member: PropertyInfo { SetMethod: { } setMethod } })
+                throw new ArgumentException("Selector must reference a property with a setter.", nameof(selector));
+
+            proxy.AddOrUpdate(setMethod, (next, _, args) =>
+            {
+                interceptor(x => next(x), args);
+                return (object?) null;
+            });
+            return proxy;
+        }
+
         private static void AddOrUpdate<TResult>(
             this IProxy proxy,
             MethodInfo method,
-            Func<Func<object?[], object?>, MethodInfo, object?[], TResult> interceptor)
-        {
-            //if (!proxy.Interceptors.TryGetValue(method, out var interceptors))
-            if (!proxy.Interceptors.ContainsKey(method))
-                proxy.Interceptors.Add(method, (next, args) => interceptor(next, method!, args));
-            else
-                //interceptors += (next, args) => interceptor(next, method!, args);
-                //proxy.Interceptors[method] = interceptors;
-                proxy.Interceptors[method] += (next, args) => interceptor(next, method!, args);
-        }
+            Func<Func<object?[], object?>, MethodInfo, object?[], TResult> interceptor) =>
+            proxy.AddInterceptor(method, (next, args) => interceptor(next, method, args));
     }
 
 }

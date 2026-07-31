@@ -19,7 +19,7 @@ jobs:
       - run: echo ${{ github.event.action }}
 
       - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '5.0' }
+        with: { dotnet-version: '9.0' }
 
       # todo: uncomment once actions/download-artifact supports cross workflow artifacts
       # https://github.com/actions/toolkit/pull/517
@@ -91,7 +91,7 @@ jobs:
     needs: pack-packages
     steps:
       - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '5.0' }
+        with: { dotnet-version: '9.0' }
 
       - name: publish package (prepare)
         uses: actions/download-artifact@v2.0.9
@@ -110,7 +110,7 @@ jobs:
       - run: echo ${{ github.event.action }}
 
       - uses: actions/setup-dotnet@v1.7.2
-        with: { dotnet-version: '5.0' }
+        with: { dotnet-version: '9.0' }
 
       # it duplicates actions/upload-artifact
       # todo: remove once actions/download-artifact supports cross workflow artifacts.

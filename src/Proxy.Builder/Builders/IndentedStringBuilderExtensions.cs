@@ -4,6 +4,9 @@ using Microsoft.CodeAnalysis;
 
 namespace Assistant.Net.Dynamics.Builders
 {
+    /// <summary>
+    ///     Fluent extensions for <see cref="IndentedStringBuilder"/>.
+    /// </summary>
     public static class IndentedStringBuilderExtensions
     {
         /// <summary>
@@ -61,5 +64,16 @@ namespace Assistant.Net.Dynamics.Builders
                 .Append(method.Name, "Of")
                 .AppendJoin("And", parameterTypes, (b, type) => b.TypeName(type));
         }
+
+        /// <summary>
+        ///     Returns the `ref`/`out`/`in` declaration keyword for the <paramref name="kind"/>, or empty for by-value.
+        /// </summary>
+        public static string ToPrefix(this RefKind kind) => kind switch
+        {
+            RefKind.Ref => "ref ",
+            RefKind.Out => "out ",
+            RefKind.In => "in ",
+            _ => string.Empty
+        };
     }
 }
