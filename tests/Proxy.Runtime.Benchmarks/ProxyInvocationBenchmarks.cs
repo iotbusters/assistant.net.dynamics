@@ -35,7 +35,7 @@ namespace Assistant.Net.Dynamics.Proxy.Runtime.Benchmarks
 
             uninterceptedProxy = factory.Create<IBenchmarkTarget>(instance).Object;
             interceptedProxy = factory.Create<IBenchmarkTarget>(instance)
-                .Intercept(x => x.Method(default!), (_, args) => (string) args[0]!)
+                .Intercept(x => x.Method(default!), (_, args) => (string)args[0]!)
                 .Object;
         }
 

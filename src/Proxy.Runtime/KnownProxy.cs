@@ -78,7 +78,7 @@ namespace Assistant.Net.Dynamics
         /// </summary>
         public static bool IsProxy(this Type type) =>
             typeof(IProxy).IsAssignableFrom(type)
-            && type.BaseType is {IsGenericType: true}
+            && type.BaseType is { IsGenericType: true }
             && type.BaseType.GetGenericTypeDefinition() == typeof(Proxy<>);
 
         private static Exception NotProxyTypeError(Type proxyType) =>

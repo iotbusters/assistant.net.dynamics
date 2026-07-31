@@ -49,7 +49,7 @@ namespace Assistant.Net.Dynamics
             {
                 case MemberExpression { Member: PropertyInfo { GetMethod: var getProperty/*, SetMethod: var setProperty*/ } }:
                     if (getProperty != null)
-                        proxy.AddOrUpdate(getProperty!, (next, mi, args) => interceptor(x => (TResult) next(x)!, mi, args));
+                        proxy.AddOrUpdate(getProperty!, (next, mi, args) => interceptor(x => (TResult)next(x)!, mi, args));
                     // note: setters are ignored as they weren't properly planned
                     // todo: implement setters
                     //if (setProperty != null)
@@ -122,7 +122,7 @@ namespace Assistant.Net.Dynamics
             this Proxy<T> proxy,
             Expression<Func<T, TValue>> selector,
             Action<TValue> interceptor) =>
-            proxy.InterceptSet(selector, (_, args) => interceptor((TValue) args[0]!));
+            proxy.InterceptSet(selector, (_, args) => interceptor((TValue)args[0]!));
 
         /// <summary>
         ///     Intercepts the setter of the property defined in <paramref name="selector"/> in pipeline manner.
@@ -138,7 +138,7 @@ namespace Assistant.Net.Dynamics
             proxy.AddOrUpdate(setMethod, (next, _, args) =>
             {
                 interceptor(x => next(x), args);
-                return (object?) null;
+                return (object?)null;
             });
             return proxy;
         }

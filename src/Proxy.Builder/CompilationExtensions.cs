@@ -65,11 +65,11 @@ namespace Assistant.Net.Dynamics
                     $"Expected an interface type but provided `{proxyType.Name}` instead.",
                     proxyType.Name);
 
-            var systemAssemblies = new[] {typeof(Proxy<>).Assembly.Location}.Select(x => MetadataReference.CreateFromFile(x));
+            var systemAssemblies = new[] { typeof(Proxy<>).Assembly.Location }.Select(x => MetadataReference.CreateFromFile(x));
             compilation = compilation.AddReferences(systemAssemblies);
 
             var baseProxyTypeDefinition = compilation.GetTypeSymbol(typeof(Proxy<>));
-            if(baseProxyTypeDefinition == null)
+            if (baseProxyTypeDefinition == null)
                 throw new ArgumentException(
                     "Package `assistant.net.dynamics.proxy` is required. Please ensure it was installed.",
                     proxyType.Name);
@@ -96,7 +96,7 @@ namespace Assistant.Net.Dynamics
 
             builder.AddNamespace(@namespace ?? defaultNamespace, nb =>
             {
-                nb.AddClass(proxyTypeName, new []{ baseProxyType, proxyType }, cb =>
+                nb.AddClass(proxyTypeName, new[] { baseProxyType, proxyType }, cb =>
                 {
                     var proxyTypeProperties = proxyType.GetMembers().OfType<IPropertySymbol>().ToArray();
                     var proxyTypeMethods = proxyType.GetMembers().OfType<IMethodSymbol>().Where(x => x.MethodKind == MethodKind.Ordinary).ToArray();
@@ -126,7 +126,7 @@ namespace Assistant.Net.Dynamics
                             cb.AddField(methodInfoType, buildName: b => b.Append("remove", @event.Name));
                     }
 
-                    cb.AddCtor(new[] {(instanceFieldName, proxyType)}, ccb =>
+                    cb.AddCtor(new[] { (instanceFieldName, proxyType) }, ccb =>
                     {
                         ccb.AppendLine("this.", instanceFieldName, " = ", instanceFieldName, ";");
                         ccb.AppendLine("this.", errorFieldName, " = ")

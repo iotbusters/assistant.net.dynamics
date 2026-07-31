@@ -101,7 +101,7 @@ namespace Assistant.Net.Dynamics.Proxy.Runtime.Tests
 
             var proxy = factory.Create<ITest>(new Test());
             var method = typeof(ITest).GetMethod(nameof(ITest.TryGet))!;
-            ((IProxy) proxy).AddInterceptor(method, (_, args) =>
+            ((IProxy)proxy).AddInterceptor(method, (_, args) =>
             {
                 args[1] = "intercepted!";
                 return true;
@@ -122,7 +122,7 @@ namespace Assistant.Net.Dynamics.Proxy.Runtime.Tests
                 .BuildServiceProvider()
                 .GetRequiredService<IProxyFactory>();
 
-            var actions = Enumerable.Range(0, 50).Select(i => (Action) (() =>
+            var actions = Enumerable.Range(0, 50).Select(i => (Action)(() =>
             {
                 var proxy = factory.Create<ITest>(new Test())
                     .Intercept(x => x.Function(), _ => $"value-{i}")

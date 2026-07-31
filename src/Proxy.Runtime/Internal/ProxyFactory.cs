@@ -39,10 +39,10 @@ namespace Assistant.Net.Dynamics.Internal
                 if (strategy != ProxyGenerationStrategy.ByRequest)
                     throw new InvalidOperationException($"Proxy generation by request wasn't allowed but the type was requested: {type.FullName}");
 
-                throw RuntimeGenerationNotAvailable(new[] {type.FullName});
+                throw RuntimeGenerationNotAvailable(new[] { type.FullName });
             }
 
-            return (Proxy<T>) factory!(instance);
+            return (Proxy<T>)factory!(instance);
         }
 
         private static InvalidOperationException RuntimeGenerationNotAvailable(System.Collections.Generic.IEnumerable<string?> typeNames) =>
