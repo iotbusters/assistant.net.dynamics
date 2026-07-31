@@ -7,6 +7,9 @@ using System;
 
 namespace Assistant.Net.Dynamics
 {
+    /// <summary>
+    ///     Dependency injection registration extensions for <see cref="IProxyFactory"/>.
+    /// </summary>
     public static class ServiceCollectionExtensions
     {
         /// <summary>

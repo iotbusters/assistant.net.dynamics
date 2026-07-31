@@ -13,9 +13,11 @@ namespace Assistant.Net.Dynamics.Builders
     {
         private readonly IndentedStringBuilder builder;
 
+        /// <summary/>
         public SourceBuilder() =>
             this.builder = new(this, 0);
 
+        /// <summary/>
         public SourceBuilder(IndentedStringBuilder builder) =>
             this.builder = builder;
 
@@ -57,6 +59,31 @@ namespace Assistant.Net.Dynamics.Builders
             return this;
         }
 
+        /// <summary>
+        ///     Adds a module initializer that self-registers the proxy factory in the global registry.
+        /// </summary>
+        public SourceBuilder AddProxyRegistration(string? @namespace, INamedTypeSymbol proxyType, string proxyTypeName)
+        {
+            if (@namespace == null)
+                return this;
+            builder.AppendLine()
+                .AppendLine("#pragma warning disable 1591")
+                .AppendLine("namespace ", @namespace)
+                .AddBlock(nb => nb
+                    .AppendLine("internal static class ", proxyTypeName, "Registration")
+                    .AddBlock(cb => cb
+                        .AppendLine("[global::System.Runtime.CompilerServices.ModuleInitializer]")
+                        .AppendLine("internal static void Register()")
+                        .AddBlock(mb => mb
+                            .AppendLine("global::Assistant.Net.Dynamics.KnownProxy.RegisterFactory(")
+                            .Append("typeof(").Type(proxyType).AppendLine("),")
+                            .AppendLine("typeof(", proxyTypeName, "),")
+                            .Append("instance => new ", proxyTypeName, "((").Type(proxyType).AppendLine(") instance));"))))
+                .AppendLine("#pragma warning restore 1591");
+            return this;
+        }
+
+        /// <inheritdoc/>
         public override string ToString()
         {
             var resultBuilder = new StringBuilder();

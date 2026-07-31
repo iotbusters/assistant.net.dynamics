@@ -12,6 +12,7 @@ namespace Assistant.Net.Dynamics.Builders
         private readonly string className;
         private readonly IndentedStringBuilder builder;
 
+        /// <summary/>
         public ClassSourceBuilder(IndentedStringBuilder builder, string name)
         {
             this.className = name;
@@ -106,7 +107,7 @@ namespace Assistant.Net.Dynamics.Builders
                 .AppendJoin(
                     ", ",
                     method.Parameters.ToArray(),
-                    (b, parameter) => b.Type(parameter.Type).Append(" ", parameter.Name!))
+                    (b, parameter) => b.Append(parameter.RefKind.ToPrefix()).Type(parameter.Type).Append(" ", parameter.Name!))
                 .AppendLine(")")
                 .AddBlock(body)
                 .AppendLine();

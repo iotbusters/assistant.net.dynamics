@@ -1,4 +1,4 @@
-﻿namespace Assistant.Net.Dynamics.Abstractions
+namespace Assistant.Net.Dynamics.Abstractions
 {
     /// <summary>
     ///     Dynamic proxy factory abstraction.

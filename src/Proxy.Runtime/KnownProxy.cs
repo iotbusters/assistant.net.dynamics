@@ -1,10 +1,9 @@
 ﻿using Assistant.Net.Dynamics.Abstractions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace Assistant.Net.Dynamics
 {
@@ -13,22 +12,13 @@ namespace Assistant.Net.Dynamics
     /// </summary>
     public static class KnownProxy
     {
-        private static readonly Dictionary<Type, Type> Types = new();
+        private static readonly ConcurrentDictionary<Type, Type> Types = new();
+        private static readonly ConcurrentDictionary<Type, Func<object?, object>> Factories = new();
 
         /// <summary>
         ///     Known proxy type implementations.
         /// </summary>
-        public static ImmutableDictionary<Type, Type> ProxyTypes => Types.ToImmutableDictionary();
-
-        /// <summary>
-        ///     Registers all proxy type implementations from all referenced assemblies.
-        /// </summary>
-        [ModuleInitializer]
-        internal static void Initialize()
-        {
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                KnownProxy.RegisterFrom(assembly);
-        }
+        public static IReadOnlyDictionary<Type, Type> ProxyTypes => Types;
 
         /// <summary>
         ///     Registers all proxy type implementations from the <paramref name="proxyAssembly"/>.
@@ -36,24 +26,40 @@ namespace Assistant.Net.Dynamics
         /// <exception cref="InvalidOperationException" />
         public static void RegisterFrom(Assembly proxyAssembly)
         {
-            var proxyTypes = proxyAssembly.GetTypes().Where(x => x.IsProxy());
-            foreach (var proxyType in proxyTypes)
+            foreach (var proxyType in GetLoadableTypes(proxyAssembly).Where(x => x.IsProxy()))
                 Register(proxyType);
+        }
+
+        private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+        {
+            try
+            {
+                return assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException exception)
+            {
+                return exception.Types.Where(type => type != null)!;
+            }
         }
 
         /// <summary>
         ///     Registers the <paramref name="proxyType"/> implementation.
         /// </summary>
         /// <exception cref="InvalidOperationException" />
-        public static bool Register(Type proxyType)
-        {
-            var instanceType = proxyType.GetInstanceType();
-            if (Types.ContainsKey(instanceType))
-                return false;
+        public static bool Register(Type proxyType) =>
+            Types.TryAdd(proxyType.GetInstanceType(), proxyType);
 
-            Types.Add(instanceType, proxyType);
-            return true;
+        /// <summary>
+        ///     Registers a strongly-typed proxy <paramref name="factory"/> for the <paramref name="instanceType"/> interface.
+        /// </summary>
+        public static bool RegisterFactory(Type instanceType, Type proxyType, Func<object?, object> factory)
+        {
+            Types.TryAdd(instanceType, proxyType);
+            return Factories.TryAdd(instanceType, factory);
         }
+
+        internal static bool TryGetFactory(Type instanceType, out Func<object?, object>? factory) =>
+            Factories.TryGetValue(instanceType, out factory);
 
         /// <summary>
         ///     Resolves proxy type from proxy type implementation.
